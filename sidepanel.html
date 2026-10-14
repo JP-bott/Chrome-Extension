@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PhilGeps BidOps Matcher</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <div class="app">
+
+    <header class="app-header">
+      <div class="app-header-text">
+        <h1>PhilGeps BidOps Matcher</h1>
+        <p class="subtitle">Universal Procurement Search &amp; Opportunity Monitor</p>
+      </div>
+      <div class="app-header-actions">
+      <button
+        id="settingsToggleBtn"
+        class="icon-btn"
+        type="button"
+        aria-expanded="false"
+        aria-controls="settingsPanel"
+        aria-label="Settings"
+        title="Settings"
+      >
+        <span data-icon="settings"></span>
+      </button>
+      <button id="closePanelBtn" class="icon-btn" type="button" aria-label="Close side panel" title="Close side panel">
+        <span data-icon="x"></span>
+      </button>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <div class="monitoring-card">
+        <div class="monitoring-row">
+          <div class="monitoring-label">
+            <span class="mon-radar" aria-hidden="true"><span class="mon-radar-sweep"></span><span class="mon-radar-blip"></span></span>
+            <span id="monitoringDot" class="monitoring-dot" data-icon="circle-dot"></span>
+            <div>
+              <p class="monitoring-title">Automatic Monitoring</p>
+              <p id="monitoringSubtitle" class="monitoring-subtitle">Off</p>
+            </div>
+          </div>
+          <span class="switch switch-lg">
+            <input type="checkbox" id="monitoringToggle" />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </span>
+        </div>
+
+        <button id="pauseResumeBtn" class="btn btn-tertiary hidden" type="button"></button>
+
+        <div class="monitoring-stats">
+          <div class="monitoring-stat">
+            <span class="monitoring-stat-value" id="statLastScan">—</span>
+            <span class="monitoring-stat-label">Last scan</span>
+          </div>
+          <div class="monitoring-stat">
+            <span class="monitoring-stat-value" id="statPages">0</span>
+            <span class="monitoring-stat-label">Pages monitored</span>
+          </div>
+          <div class="monitoring-stat">
+            <span class="monitoring-stat-value" id="statScanned">0</span>
+            <span class="monitoring-stat-label">Opportunities scanned</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="search-card" aria-label="Universal search">
+        <div class="section-heading section-heading-tight">
+          <h2>Universal Search</h2>
+        </div>
+
+        <div class="page-context" id="pageContext">
+          <div class="page-context-row">
+            <span class="page-domain mono" id="pageDomain">—</span>
+            <span class="page-access" id="pageAccess" data-access="unknown"></span>
+          </div>
+          <p class="page-title" id="pageTitle">No page selected</p>
+          <p class="page-url mono" id="pageUrl"></p>
+        </div>
+
+        <div class="keyword-search search-input">
+          <span data-icon="search" class="keyword-search-icon"></span>
+          <input
+            type="search"
+            id="searchInput"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search keywords, temporary terms, agency, title..."
+            aria-label="Search collected opportunities"
+          />
+          <button id="searchClearBtn" class="search-clear hidden" type="button" aria-label="Clear search">
+            <span data-icon="x"></span>
+          </button>
+        </div>
+        <p id="searchHint" class="settings-hint search-hint hidden"></p>
+
+        <!-- Enhanced Ctrl+F Highlight Navigation Toolbar -->
+        <div class="match-nav-toolbar" id="matchNavToolbar">
+          <div class="match-nav-buttons">
+            <button id="highlightMatchesBtn" class="btn btn-small btn-primary" type="button" title="Highlight all matching terms on this page">
+              <span data-icon="search" class="btn-icon"></span>Highlight Matches
+            </button>
+            <button id="clearHighlightsNavBtn" class="btn btn-small btn-tertiary" type="button" title="Clear highlights from page">
+              Clear
+            </button>
+          </div>
+          <div class="match-nav-controls">
+            <button id="prevMatchBtn" class="btn-icon-nav" type="button" aria-label="Previous match" title="Previous match">
+              <span data-icon="chevron-left"></span>
+            </button>
+            <span id="matchCounterText" class="match-counter-text" aria-live="polite">0 of 0</span>
+            <button id="nextMatchBtn" class="btn-icon-nav" type="button" aria-label="Next match" title="Next match">
+              <span data-icon="chevron-right"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="match-filter-row">
+          <label for="highlightFilterSelect" class="match-filter-label">Filter Highlights:</label>
+          <select id="highlightFilterSelect" class="highlight-select" aria-label="Filter highlights">
+            <option value="all">All Matches</option>
+            <option value="direct">Direct Keyword</option>
+            <option value="priority">High Priority</option>
+            <option value="potential">Potential Opportunity</option>
+          </select>
+        </div>
+
+        <div class="search-actions">
+          <button id="scanNowBtn" class="btn btn-secondary" type="button">
+            <span data-icon="refresh-cw" class="btn-icon"></span>Scan Current Page
+          </button>
+          <button id="rescanBtn" class="btn btn-quiet" type="button" title="Clear highlights and read the page again">
+            <span data-icon="rotate-cw" class="btn-icon"></span>Rescan
+          </button>
+        </div>
+        <p id="scanStats" class="scan-stats hidden" role="status"></p>
+      </section>
+
+      <!-- AI Status Bar & Action -->
+      <div class="ai-status-card" id="aiStatusCard">
+        <div class="ai-status-row">
+          <div class="ai-status-indicator">
+            <span data-icon="sparkles" class="ai-icon"></span>
+            <div>
+              <p class="ai-status-title">AI Assistance</p>
+              <p id="aiStatusSubtitle" class="ai-status-subtitle">Disabled (Optional)</p>
+            </div>
+          </div>
+          <button id="analyzeAiBtn" class="btn btn-small btn-tertiary" type="button" title="Analyze visible candidates with configured AI model">
+            <span data-icon="sparkles" class="btn-icon"></span>Analyze with AI
+          </button>
+        </div>
+        <p id="aiAnalysisFeedback" class="ai-feedback hidden" role="status"></p>
+      </div>
+
+      <div class="scan-bay" aria-hidden="true">
+        <div class="scan-bay-inner">
+          <div class="scan-panel">
+            <svg class="radar" viewBox="0 0 120 120" focusable="false">
+              <defs>
+                <linearGradient id="pbomSweepGrad" x1="0" y1="1" x2="1" y2="0">
+                  <stop offset="0" stop-color="currentColor" stop-opacity="0"/>
+                  <stop offset="1" stop-color="currentColor" stop-opacity="0.5"/>
+                </linearGradient>
+              </defs>
+              <circle class="radar-ring" cx="60" cy="60" r="56"/>
+              <circle class="radar-ring" cx="60" cy="60" r="38"/>
+              <circle class="radar-ring" cx="60" cy="60" r="20"/>
+              <line class="radar-cross" x1="60" y1="4" x2="60" y2="116"/>
+              <line class="radar-cross" x1="4" y1="60" x2="116" y2="60"/>
+              <g class="radar-sweep"><path d="M60 60 L60 4 A56 56 0 0 1 108 32 Z" fill="url(#pbomSweepGrad)"/><line x1="60" y1="60" x2="60" y2="4" stroke="currentColor" stroke-width="1.5"/></g>
+              <circle class="radar-blip b1" cx="84" cy="38" r="3"/>
+              <circle class="radar-blip b2" cx="40" cy="78" r="2.5"/>
+              <circle class="radar-blip b3" cx="76" cy="84" r="2"/>
+              <circle class="radar-halo" cx="60" cy="60" r="56"/>
+              <circle class="radar-core" cx="60" cy="60" r="3.5"/>
+            </svg>
+            <div class="scan-readout">
+              <p class="scan-state"><span class="st st-run">Scanning active tab</span><span class="st st-ok">Scan complete</span><span class="st st-warn">No listings found</span><span class="st st-err">Scan failed</span></p>
+              <p class="scan-sub">Indeterminate · awaiting page response</p>
+              <div class="scan-track"><span class="scan-bar"></span></div>
+              <div class="scan-stream"><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="unsupportedNotice" class="notice hidden" role="status">
+        <span data-icon="info" class="notice-icon"></span>
+        <span>This page can't be scanned. Browser pages, the Chrome Web Store and other restricted pages are off-limits to extensions.</span>
+      </div>
+
+      <div id="accessNotice" class="notice notice-access hidden" role="status">
+        <span data-icon="info" class="notice-icon"></span>
+        <div class="notice-body">
+          <span id="accessNoticeText">The extension doesn't have access to this site yet. Allow it to read this page so it can look for procurement listings.</span>
+          <button id="grantSiteBtn" class="btn btn-small btn-secondary" type="button">Allow access to this site</button>
+        </div>
+      </div>
+
+      <div id="noTableNotice" class="notice hidden" role="status">
+        <span data-icon="info" class="notice-icon"></span>
+        <span>No procurement listings were detected on this page.</span>
+      </div>
+
+      <div id="errorNotice" class="notice notice-error hidden" role="alert">
+        <span data-icon="circle-x" class="notice-icon"></span>
+        <span id="errorNoticeText"></span>
+      </div>
+
+      <div class="filter-bar" id="filterBar">
+        <div class="filter-seg" id="qualFilter" role="radiogroup" aria-label="Filter by qualification">
+          <button type="button" class="filter-opt active" data-filter="all" role="radio" aria-checked="true">All</button>
+          <button type="button" class="filter-opt" data-filter="QUALIFIED" role="radio" aria-checked="false">Passed</button>
+          <button type="button" class="filter-opt" data-filter="OPTIONAL_PASSED" role="radio" aria-checked="false">Optional</button>
+          <button type="button" class="filter-opt" data-filter="POTENTIAL_MATCH" role="radio" aria-checked="false">Potential</button>
+          <button type="button" class="filter-opt" data-filter="NEEDS_VERIFICATION" role="radio" aria-checked="false">Verify</button>
+        </div>
+        <div class="filter-row">
+          <div class="filter-seg" id="scopeFilter" role="radiogroup" aria-label="Result scope">
+            <button type="button" class="filter-opt active" data-scope="all" role="radio" aria-checked="true">All collected</button>
+            <button type="button" class="filter-opt" data-scope="page" role="radio" aria-checked="false">This page</button>
+          </div>
+          <select id="domainFilter" class="domain-select" aria-label="Filter by source domain">
+            <option value="">All sources</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <span data-icon="search" class="empty-state-icon"></span>
+        <p class="empty-state-title" id="emptyStateTitle">No opportunities collected yet</p>
+        <p class="empty-state-body" id="emptyStateBody">
+            Scan the current PhilGEPS page, or turn on Automatic Monitoring to collect opportunities here.
+        </p>
+      </div>
+
+      <div id="resultsWrap" class="hidden">
+
+        <div class="summary-bar" id="summaryBar">
+          <div class="summary-item">
+            <span class="summary-value summary-value-qualified" id="sumQualified">0</span>
+            <span class="summary-label">passed</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value summary-value-optional" id="sumOptionalPassed">0</span>
+            <span class="summary-label">optional</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value summary-value-potential" id="sumPotential">0</span>
+            <span class="summary-label">potential</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value summary-value-verification" id="sumVerification">0</span>
+            <span class="summary-label">verify</span>
+          </div>
+        </div>
+
+        <div id="resultGroups"></div>
+
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="quiet-actions">
+        <button id="highlightBtn" class="btn btn-quiet" type="button">Highlight Matches</button>
+        <button id="clearHighlightsBtn" class="btn btn-quiet" type="button">Clear Highlights</button>
+        <button id="clearResultsBtn" class="btn btn-quiet" type="button">
+          <span data-icon="trash-2" class="btn-icon"></span>Clear Results
+        </button>
+      </div>
+    </footer>
+
+    <details class="settings-panel" id="settingsPanel">
+      <summary class="settings-summary">
+        <span class="settings-summary-text">
+          <span data-icon="settings" class="btn-icon"></span>Settings
+        </span>
+        <span data-icon="chevron-down" class="chevron"></span>
+      </summary>
+
+      <div class="settings-body">
+
+        <!-- Optional AI Integration Settings -->
+        <div class="settings-group">
+          <div class="settings-row-between">
+            <h3 class="settings-group-title">AI Integration (Optional)</h3>
+            <span class="settings-badge" id="aiSettingsBadge">Disabled</span>
+          </div>
+          <p class="settings-hint">
+            AI integration is strictly optional. The extension continues to scan, match, and highlight normally when AI is disabled. Extracted text from procurement notices may be processed to enhance classification and identify contextual synonyms without altering established qualification criteria.
+          </p>
+
+          <label class="toggle-row">
+            <span>Enable AI Assistance</span>
+            <span class="switch">
+              <input type="checkbox" id="aiEnabledToggle" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+
+          <div id="aiConfigFields" class="ai-config-fields hidden">
+            <div class="field-row">
+              <label for="aiProviderSelect">Provider</label>
+              <select id="aiProviderSelect" class="settings-select">
+                <option value="openai">OpenAI-Compatible</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="anthropic">Anthropic Claude</option>
+                <option value="custom">Custom Endpoint</option>
+              </select>
+            </div>
+
+            <div class="field-row">
+              <label for="aiEndpointInput">API Endpoint</label>
+              <input type="url" id="aiEndpointInput" placeholder="https://api.openai.com/v1/chat/completions" spellcheck="false" />
+            </div>
+
+            <div class="field-row">
+              <label for="aiModelInput">Model Name</label>
+              <input type="text" id="aiModelInput" placeholder="gpt-4o-mini" spellcheck="false" />
+            </div>
+
+            <div class="field-row">
+              <label for="aiTokenInput">API Access Token</label>
+              <div class="input-with-action">
+                <input type="password" id="aiTokenInput" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+                <button id="toggleTokenVisibilityBtn" class="btn-icon-subtle" type="button" aria-label="Toggle token visibility" title="Show/hide token">
+                  <span data-icon="eye"></span>
+                </button>
+              </div>
+            </div>
+
+            <label class="toggle-row">
+              <span>Auto-analyze on scan</span>
+              <span class="switch">
+                <input type="checkbox" id="aiAutoAnalyzeToggle" />
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </span>
+            </label>
+
+            <div class="ai-actions-row">
+              <button id="testAiConnectionBtn" class="btn btn-secondary btn-small" type="button">
+                <span data-icon="bot" class="btn-icon"></span>Test Connection
+              </button>
+              <button id="saveAiSettingsBtn" class="btn btn-primary btn-small" type="button">
+                Save AI Settings
+              </button>
+              <button id="removeAiTokenBtn" class="btn btn-quiet btn-small" type="button" title="Remove stored token">
+                Remove Token
+              </button>
+            </div>
+
+            <p id="aiConnectionStatus" class="settings-hint ai-conn-status hidden" role="status"></p>
+
+            <p class="settings-hint secure-notice">
+              Security note: Your token is stored locally in extension storage and executed only from the secure background service worker. It is never injected into webpages, transmitted to PhilGEPS pages, or logged to the console.
+            </p>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-group-title">Keyword Matching</h3>
+
+          <div class="field-row">
+            <label for="minMatches">Minimum matches</label>
+            <input type="number" id="minMatches" min="1" value="1" />
+          </div>
+
+          <label class="toggle-row">
+            <span>Case Sensitive</span>
+            <span class="switch">
+              <input type="checkbox" id="caseSensitive" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="toggle-row">
+            <span>Whole Word Only</span>
+            <span class="switch">
+              <input type="checkbox" id="wholeWord" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="toggle-row">
+            <span>Include related ICT/IT terms</span>
+            <span class="switch">
+              <input type="checkbox" id="includeRelated" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-row-between">
+            <h3 class="settings-group-title">Keywords</h3>
+            <span class="settings-hint"><span id="keywordCount">41</span> configured</span>
+          </div>
+
+          <button id="manageKeywordsBtn" class="btn btn-tertiary btn-full" type="button" aria-expanded="false" aria-controls="keywordManager">
+            <span data-icon="tags" class="btn-icon"></span>
+            <span>Manage Keywords</span>
+            <span data-icon="chevron-down" class="chevron chevron-inline"></span>
+          </button>
+
+          <div id="keywordManager" class="keyword-manager hidden">
+            <div class="keyword-search">
+              <span data-icon="search" class="keyword-search-icon"></span>
+              <input type="text" id="keywordSearch" placeholder="Search keywords..." />
+            </div>
+
+            <div id="keywordListRows" class="keyword-list-rows"></div>
+            <div id="keywordEmptyNote" class="keyword-empty-note hidden">No keywords match your search.</div>
+
+            <div class="keyword-add-row">
+              <input type="text" id="newKeywordInput" placeholder="Add a keyword or phrase" />
+              <button id="addKeywordBtn" class="btn btn-secondary" type="button">
+                <span data-icon="plus" class="btn-icon"></span>Add
+              </button>
+            </div>
+
+            <div class="keyword-manager-actions">
+              <button id="resetKeywordsBtn" class="btn btn-tertiary" type="button">Reset to Defaults</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-group-title">Monitoring</h3>
+
+          <label class="toggle-row">
+            <span>Notify on new passed opportunity</span>
+            <span class="switch">
+              <input type="checkbox" id="notifyOnQualified" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="toggle-row">
+            <span>Keep monitoring after Chrome restarts</span>
+            <span class="switch">
+              <input type="checkbox" id="persistAcrossRestart" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-group-title">Appearance</h3>
+          <div class="theme-switcher" id="themeSwitcher" role="radiogroup" aria-label="Theme">
+            <button type="button" class="theme-option" data-theme-choice="light" role="radio">Light</button>
+            <button type="button" class="theme-option" data-theme-choice="dark" role="radio">Dark</button>
+            <button type="button" class="theme-option" data-theme-choice="system" role="radio">System</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-group-title">Site Access</h3>
+          <p class="settings-hint access-explainer">
+            Only official PhilGEPS pages are supported. The extension never reads unrelated websites and never bypasses logins or CAPTCHAs.
+          </p>
+          <p id="siteAccessStatus" class="settings-hint access-status"></p>
+          <div class="access-actions">
+            <button id="grantAllSitesBtn" class="btn btn-secondary btn-small" type="button">Allow all websites</button>
+            <button id="revokeSitesBtn" class="btn btn-tertiary btn-small hidden" type="button">Remove extra access</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-row-between">
+            <h3 class="settings-group-title">Diagnostics</h3>
+          </div>
+          <button id="diagnosticsToggleBtn" class="btn btn-tertiary btn-full" type="button" aria-expanded="false" aria-controls="diagnosticsPanel">
+            <span data-icon="list-filter" class="btn-icon"></span>
+            <span>Unrecognized Government Entities</span>
+            <span data-icon="chevron-down" class="chevron chevron-inline"></span>
+          </button>
+          <div id="diagnosticsPanel" class="keyword-manager hidden">
+            <p class="settings-hint" style="margin-bottom: 8px;">
+              Procuring entities that looked like a government office but weren't found in the entity database.
+              These opportunities still show as Optional Passed — nothing is hidden because of this.
+            </p>
+            <div id="diagnosticsList" class="keyword-list-rows"></div>
+            <div id="diagnosticsEmptyNote" class="keyword-empty-note hidden">None yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </details>
+
+  </div>
+
+  <script src="constants.js"></script>
+  <script src="url-utils.js"></script>
+  <script src="procurement-classifier.js"></script>
+  <script src="ai-provider.js"></script>
+  <script src="icons.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
