@@ -114,14 +114,110 @@ function pbomParseClosingDate(rawText) {
   return { date: null, approximate: false };
 }
 
-/**
- * Alias for parsing a non-closing date (e.g. "Date Published"). The
- * underlying parser has no closing-specific behavior beyond assuming
- * end-of-day when no time is present, which is a harmless default for a
- * publish date too since only the date part is normally used from it.
- */
+/** Alias for parsing a publication date from a source field. */
 function pbomParseGenericDate(rawText) {
-  return pbomParseClosingDate(rawText);
+  return pbomParsePublicationDate(rawText);
+}
+
+function pbomCreateValidatedLocalDate(year, month, day, hour, minute, second) {
+  const date = new Date(year, month, day, hour || 0, minute || 0, second || 0, 0);
+  if (
+    isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+/**
+ * Parses a publication date without guessing ambiguous numeric formats.
+ * Named-month and ISO dates are unambiguous; slash-separated numeric dates
+ * are rejected unless a source-specific adapter has already normalized them.
+ */
+function pbomParsePublicationDate(rawText) {
+  if (!rawText) return { date: null, approximate: false, verified: false, reason: "missing" };
+  const text = String(rawText).replace(/\s+/g, " ").trim();
+  if (!text) return { date: null, approximate: false, verified: false, reason: "missing" };
+
+  let m = text.match(
+    /([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})(?:\s*[-–—,]?\s*(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?)?/
+  );
+  if (m && m[1].toLowerCase() in MONTH_NAMES) {
+    const month = MONTH_NAMES[m[1].toLowerCase()];
+    const day = parseInt(m[2], 10);
+    const year = parseInt(m[3], 10);
+    const date = pbomCreateValidatedLocalDate(year, month, day);
+    if (!date) return { date: null, approximate: false, verified: false, reason: "invalid" };
+    return { date, approximate: true, verified: true, reason: null };
+  }
+
+  m = text.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\.?,?\s+(\d{4})/);
+  if (m && m[2].toLowerCase() in MONTH_NAMES) {
+    const day = parseInt(m[1], 10);
+    const month = MONTH_NAMES[m[2].toLowerCase()];
+    const year = parseInt(m[3], 10);
+    const date = pbomCreateValidatedLocalDate(year, month, day);
+    if (!date) return { date: null, approximate: false, verified: false, reason: "invalid" };
+    return { date, approximate: true, verified: true, reason: null };
+  }
+
+  m = text.match(/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    const day = parseInt(m[3], 10);
+    const date = pbomCreateValidatedLocalDate(year, month, day);
+    if (!date) return { date: null, approximate: false, verified: false, reason: "invalid" };
+    return { date, approximate: m[4] == null, verified: true, reason: null };
+  }
+
+  return { date: null, approximate: false, verified: false, reason: /\d{1,2}[/-]\d{1,2}[/-]\d{4}/.test(text) ? "ambiguous" : "unrecognized" };
+}
+
+function pbomNormalizeCalendarDate(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function pbomSubtractCalendarMonths(date, months) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  const targetIndex = year * 12 + month - months;
+  const targetYear = Math.floor(targetIndex / 12);
+  const targetMonth = targetIndex % 12;
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  return new Date(targetYear, targetMonth, Math.min(day, lastDay));
+}
+
+/**
+ * Checks publication eligibility using the inclusive calendar-date window
+ * [today minus three calendar months, today]. Previous calendar years are
+ * always ineligible even when they fall inside the calendar-month boundary.
+ */
+function pbomClassifyPublicationEligibility(rawText, now) {
+  const parsed = pbomParsePublicationDate(rawText);
+  if (!parsed.date || !parsed.verified) {
+    return { status: "VERIFY", date: null, reason: parsed.reason || "unverified" };
+  }
+
+  const today = pbomNormalizeCalendarDate(now || new Date());
+  const published = pbomNormalizeCalendarDate(parsed.date);
+  const start = pbomSubtractCalendarMonths(today, 3);
+
+  if (published > today) {
+    return { status: "VERIFY", date: published, start, end: today, reason: "future_publication_date" };
+  }
+  if (published.getFullYear() !== today.getFullYear()) {
+    return { status: "OUTSIDE_WINDOW", date: published, start, end: today, reason: "previous_or_future_year" };
+  }
+  if (published < start) {
+    return { status: "OUTSIDE_WINDOW", date: published, start, end: today, reason: "outside_three_month_window" };
+  }
+
+  return { status: "ELIGIBLE", date: published, start, end: today, reason: null };
 }
 
 function pbomPad2(n) {

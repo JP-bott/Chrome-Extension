@@ -105,6 +105,7 @@
 
     const dateInfo = pbomClassifyClosingDate(op.closing, now);
     const publishedInfo = pbomParseGenericDate(op.publish);
+    const publicationEligibility = pbomClassifyPublicationEligibility(op.publish, now);
 
     const procurementStatus =
       op.procurementStatus ||
@@ -112,14 +113,20 @@
         ? pbomClassifyProcurementStatus(op.rowText, op.title, op.url || window.location.href)
         : PBOM_PROCUREMENT_STATUS.UNVERIFIED);
 
-    const { qualification } = pbomQualify({
+    let { qualification } = pbomQualify({
       keywordOk,
       locationStatus: location.status,
       dateStatus: dateInfo.status,
       procurementStatus,
     });
 
-    return { matchResult, keywordOk, location, dateInfo, publishedInfo, procurementStatus, qualification };
+    if (publicationEligibility.status === "OUTSIDE_WINDOW") {
+      qualification = PBOM_QUALIFICATION.REJECTED;
+    } else if (publicationEligibility.status === "VERIFY" && keywordOk) {
+      qualification = PBOM_QUALIFICATION.NEEDS_VERIFICATION;
+    }
+
+    return { matchResult, keywordOk, location, dateInfo, publishedInfo, publicationEligibility, procurementStatus, qualification };
   }
 
   // ---- Scan state for highlighting & navigation ------------------------------
@@ -206,6 +213,8 @@
         procurementStatus: result.procurementStatus,
         datePublished: result.publishedInfo.date ? pbomFormatIsoDateOnly(result.publishedInfo.date) : null,
         datePublishedRaw: op.publish,
+        publicationEligibility: result.publicationEligibility.status,
+        publicationEligibilityReason: result.publicationEligibility.reason || null,
         closingRaw: op.closing,
         closingDate: result.dateInfo.date ? pbomFormatIsoDateOnly(result.dateInfo.date) : null,
         closingTime: result.dateInfo.date && !result.dateInfo.approximate ? pbomFormatTimeHHMM(result.dateInfo.date) : null,

@@ -269,10 +269,11 @@ function pbomCompareResults(a, b) {
 
 /**
  * Recomputes qualification for every stored candidate against the current
- * time. Entries that have since expired or fallen beyond the 4-day window
- * are pruned outright (mutates state.candidates). Returns one combined,
- * fully sorted list (Part 15 priority) plus counts — grouping by Date
- * Published for display is left to the popup.
+ * time. Closing-date rejection follows the existing retention behavior;
+ * publication-ineligible records remain stored for diagnostics/history but
+ * are omitted from the displayed list. Returns one combined, fully sorted
+ * list (Part 15 priority) plus counts — grouping by Date Published for
+ * display is left to the popup.
  */
 function pruneAndClassify(state) {
   const now = new Date();
@@ -285,6 +286,14 @@ function pruneAndClassify(state) {
   Object.keys(state.candidates).forEach((uid) => {
     const record = state.candidates[uid];
     const dateInfo = pbomClassifyClosingDate(record.closingRaw, now);
+    const publicationEligibility = pbomClassifyPublicationEligibility(record.datePublishedRaw || record.datePublished, now);
+
+    record.publicationEligibility = publicationEligibility.status;
+    record.publicationEligibilityReason = publicationEligibility.reason || null;
+
+    // Keep records in durable storage for history and diagnostics, but never
+    // expose a verified publication date outside the allowed window.
+    if (publicationEligibility.status === "OUTSIDE_WINDOW") return;
 
     // Active opportunities expire when closing date passes or exceeds 4 days
     if (record.procurementStatus === PBOM_PROCUREMENT_STATUS.ACTIVE &&
@@ -303,12 +312,16 @@ function pruneAndClassify(state) {
       }
     }
 
-    const { qualification } = pbomQualify({
+    let { qualification } = pbomQualify({
       keywordOk: true,
       locationStatus: record.location ? record.location.status : PBOM_LOCATION_STATUS.UNVERIFIED,
       dateStatus: dateInfo.status,
       procurementStatus: record.procurementStatus,
     });
+
+    if (publicationEligibility.status === "VERIFY") {
+      qualification = PBOM_QUALIFICATION.NEEDS_VERIFICATION;
+    }
 
     if (qualification === PBOM_QUALIFICATION.REJECTED) {
       delete state.candidates[uid];
